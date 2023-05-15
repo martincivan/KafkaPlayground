@@ -1,9 +1,9 @@
 import asyncio
 import os
 
-from qu.la_internal import Configuration, ApiClient, EventsApi, HandlerPayload, ApiException, Consumer
-from multiprocessing import Pool
 from aiokafka import AIOKafkaConsumer
+from qu.la_internal import Configuration, ApiClient, EventsApi, HandlerPayload, Consumer
+
 
 async def load_configuration(configuration):
     async with ApiClient(configuration) as api_client:
