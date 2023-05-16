@@ -1,7 +1,7 @@
 import asyncio
 import logging
 
-from aiokafka import AIOKafkaConsumer
+from aiokafka import AIOKafkaConsumer, ConsumerStoppedError
 
 from configuration import Configuration, HandlerParams, ConfigurationParams
 from processor import MessageProcessor
@@ -26,10 +26,14 @@ class Runner:
                 if await self._handle(msg):
                     pass  # TODO: rollback -1 message
         finally:
-            await self.kafka_consumer.stop()
+            try:
+                await self.kafka_consumer.stop()
+            except ConsumerStoppedError:
+                pass
 
-    def stop(self):
+    async def stop(self):
         self._stopped = True
+        await self.kafka_consumer.stop()
 
     async def _handle(self, msg):
         try:
@@ -46,16 +50,19 @@ class Consumer:
         self.runners = set()
 
     async def run(self):
+        logging.info("Loading configuration")
+        configuration_params = await self.configuration.load_configuration()
+        logging.info("Loading handlers")
         handlers = await self.configuration.load_handlers()
         tasks = set()
-        configuration_params = self.configuration.load_configuration()
 
         for handler in handlers:
+            logging.info("Starting consumer for handler %s, topics: %s", handler.id, ",".join(handler.topics))
             runner = Runner(handler, configuration_params, MessageProcessor())
             self.runners.add(runner)
             tasks.add(runner.run())
         await asyncio.gather(*tasks)
 
-    def stop(self):
-        for runner in self.runners:
-            runner.stop()
+    async def stop(self, *_):
+        logging.info("Stopping consumers")
+        await asyncio.gather(*[runner.stop() for runner in self.runners])
