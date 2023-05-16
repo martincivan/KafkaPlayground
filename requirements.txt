@@ -1,4 +1,4 @@
 aiokafka==0.8.0
 fastapi==0.93.0
-pydantic==1.10.4
--e file:///home/martin/IdeaProjects/LiveAgent-InternalAPI/build/generate-resources/python
+pydantic==1.10.7
+qu.la-internal @ git+https://github.com/qualityunit/LiveAgent-Internal-Api-Python-client@1.0.10
