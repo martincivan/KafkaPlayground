@@ -2,6 +2,7 @@ import asyncio
 import logging
 
 from aiokafka import AIOKafkaConsumer, ConsumerStoppedError
+from kafka import TopicPartition
 
 from configuration import Configuration, HandlerParams, ConfigurationParams
 from processor import MessageProcessor
@@ -20,11 +21,14 @@ class Runner:
     async def run(self):
         try:
             await self.kafka_consumer.start()
-            async for msg in self.kafka_consumer:
+            while not self._stopped:
+                msg = await self.kafka_consumer.getone()
+                if not await self._handle(msg):
+                    logging.error("Error while processing message %s", msg)
+                    self.kafka_consumer.seek(TopicPartition(msg.topic, msg.partition), msg.offset)
+                    await asyncio.sleep(1)
                 if self._stopped:
                     break
-                if await self._handle(msg):
-                    pass  # TODO: rollback -1 message
         finally:
             try:
                 await self.kafka_consumer.stop()

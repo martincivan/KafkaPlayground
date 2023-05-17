@@ -1,10 +1,11 @@
 version: '3.8'
 services:
-  producer:
+  consumer:
     build:
-      dockerfile: producer.dockerfile
+      dockerfile: consumer.dockerfile
     environment:
-      kafka_url: "kafka:9092"
+      KAFKA_SERVER: "kafka:9092"
+      LA_URL: "http://php-apache/LiveAgent/server/public/api/internal"
     ports:
       - "8082:80"
     networks:
@@ -12,8 +13,7 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
-      - producer.py:producer.py
-      - /home/martin/IdeaProjects/LiveAgent-InternalAPI/build/generate-resources/python:/home/martin/IdeaProjects/LiveAgent-InternalAPI/build/generate-resources/python
+      - ./consumer:/app
 networks:
   front_qu:
     external: true
