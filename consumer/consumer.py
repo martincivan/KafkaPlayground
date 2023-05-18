@@ -41,7 +41,7 @@ class Runner:
 
     async def _handle(self, msg):
         try:
-            return self.message_processor.handle(msg, self.handler_params)
+            return await self.message_processor.handle(msg, self.handler_params)
         except Exception as e:
             logging.error("Error while processing message %s : %s", msg, e)
             return False
@@ -62,7 +62,7 @@ class Consumer:
 
         for handler in handlers:
             logging.info("Starting consumer for handler %s, topics: %s", handler.id, ",".join(handler.topics))
-            runner = Runner(handler, configuration_params, MessageProcessor())
+            runner = Runner(handler, configuration_params, MessageProcessor(configuration_params.la_key, configuration_params.la_url))
             self.runners.add(runner)
             tasks.add(runner.run())
         await asyncio.gather(*tasks)

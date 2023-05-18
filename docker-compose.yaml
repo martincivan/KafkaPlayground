@@ -5,7 +5,10 @@ services:
       dockerfile: consumer.dockerfile
     environment:
       KAFKA_SERVER: "kafka:9092"
+      LA_CONFIG_URL: "http://php-apache/LiveAgent/server/public/api/internal"
       LA_URL: "http://php-apache/LiveAgent/server/public/api/internal"
+#       LA_URL: "http://{account}.php-apache/LiveAgent/server/public/api/internal"
+      LA_KEY: "/app/kafka.key"
     ports:
       - "8082:80"
     networks:
@@ -14,6 +17,7 @@ services:
       - "host.docker.internal:host-gateway"
     volumes:
       - ./consumer:/app
+      - ./dev.kafka.key:/app/kafka.key
 networks:
   front_qu:
     external: true
