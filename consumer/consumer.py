@@ -8,10 +8,26 @@ from configuration import Configuration, HandlerParams, ConfigurationParams
 from processor import MessageProcessor
 
 
-class Runner:
+class BackOffHandler:
+
+    def __init__(self, retry_timeout: int, max_backoff: int = 5):
+        self.max_backoff = max_backoff
+        self.retry_timeout = retry_timeout
+        self.retries = 0
+
+    async def handle(self):
+        self.retries = min(self.retries + 1, self.max_backoff)
+        await asyncio.sleep(self.retries * self.retry_timeout)
+
+    def reset(self):
+        self.retries = 0
+
+
+class Consumer:
 
     def __init__(self, handler_params: HandlerParams, configuration: ConfigurationParams,
-                 message_processor: MessageProcessor):
+                 message_processor: MessageProcessor, backoff_handler: BackOffHandler = None):
+        self.backoff_handler = backoff_handler or BackOffHandler(0)
         self.message_processor = message_processor
         self.kafka_consumer = AIOKafkaConsumer(*handler_params.topics, bootstrap_servers=configuration.kafka_server,
                                                group_id=handler_params.id)
@@ -23,17 +39,21 @@ class Runner:
             await self.kafka_consumer.start()
             while not self._stopped:
                 msg = await self.kafka_consumer.getone()
-                if not await self._handle(msg):
+                if await self._handle(msg):
+                    self.backoff_handler.reset()
+                else:
                     logging.error("Error while processing message %s", msg)
                     self.kafka_consumer.seek(TopicPartition(msg.topic, msg.partition), msg.offset)
-                    await asyncio.sleep(1)
-                if self._stopped:
-                    break
+                    await self.backoff_handler.handle()
+        except ConsumerStoppedError as error:
+            if not self._stopped:
+                raise error
         finally:
-            try:
-                await self.kafka_consumer.stop()
-            except ConsumerStoppedError:
-                pass
+            if not self._stopped:
+                try:
+                    await self.kafka_consumer.stop()
+                except ConsumerStoppedError:
+                    pass
 
     async def stop(self):
         self._stopped = True
@@ -47,7 +67,7 @@ class Runner:
             return False
 
 
-class Consumer:
+class Runner:
 
     def __init__(self, configuration: Configuration):
         self.configuration = configuration
@@ -62,7 +82,8 @@ class Consumer:
 
         for handler in handlers:
             logging.info("Starting consumer for handler %s, topics: %s", handler.id, ",".join(handler.topics))
-            runner = Runner(handler, configuration_params, MessageProcessor(configuration_params.la_key, configuration_params.la_url))
+            runner = Consumer(handler, configuration_params, MessageProcessor(configuration_params),
+                              BackOffHandler(configuration_params.timeout, 5))
             self.runners.add(runner)
             tasks.add(runner.run())
         await asyncio.gather(*tasks)
@@ -70,3 +91,4 @@ class Consumer:
     async def stop(self, *_):
         logging.info("Stopping consumers")
         await asyncio.gather(*[runner.stop() for runner in self.runners])
+        logging.info("Consumers stopped")

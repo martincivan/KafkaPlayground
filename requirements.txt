@@ -2,3 +2,4 @@ aiokafka==0.8.0
 fastapi==0.93.0
 pydantic==1.10.7
 qu.la-internal @ git+https://github.com/qualityunit/LiveAgent-Internal-Api-Python-client@1.0.10
+pyjwt[crypto]==2.7.0

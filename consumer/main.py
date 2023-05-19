@@ -3,13 +3,13 @@ import logging
 import signal
 
 from configuration import Configuration
-from consumer import Consumer
+from consumer import Runner
 
 logging.basicConfig(level=logging.INFO)
 
 
 async def main():
-    runner = Consumer(configuration=Configuration())
+    runner = Runner(configuration=Configuration())
     loop = asyncio.get_event_loop()
     for signame in ('SIGINT', 'SIGTERM'):
         loop.add_signal_handler(getattr(signal, signame),

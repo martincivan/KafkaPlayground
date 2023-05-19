@@ -3,12 +3,15 @@ services:
   consumer:
     build:
       dockerfile: consumer.dockerfile
+      target: builder
     environment:
       KAFKA_SERVER: "kafka:9092"
       LA_CONFIG_URL: "http://php-apache/LiveAgent/server/public/api/internal"
       LA_URL: "http://php-apache/LiveAgent/server/public/api/internal"
-#       LA_URL: "http://{account}.php-apache/LiveAgent/server/public/api/internal"
+      #       LA_URL: "http://{account}.php-apache/LiveAgent/server/public/api/internal"
       LA_KEY: "/app/kafka.key"
+      LA_KEY_ID: "dev.kafka.la"
+      TIMEOUT: 10
     ports:
       - "8082:80"
     networks:
