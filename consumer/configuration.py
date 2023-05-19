@@ -9,6 +9,7 @@ from qu.la_internal import Configuration as ClientConfiguration
 class HandlerParams:
     id: str
     topics: set
+    types: set
 
 
 @dataclass
@@ -28,13 +29,29 @@ class ConfigurationParams:
             raise Exception("LiveAgent key ID cannot be empty")
 
 
+class MariaDBHandlersLoader:
+    def __init__(self, mariadb: str):
+        self.mariadb = mariadb
+
+    async def load(self):
+        pass
+
+
 class Configuration:
-    async def load_handlers(self):
+
+    async def load_handlers(self) -> list[HandlerParams]:
+        loader = None
         liveagent_url = os.environ.get("LA_CONFIG_URL")
         if liveagent_url:
-            return await self._load_handlers_from_liveagent(url=liveagent_url)
+            loader = LiveAgentHandlersLoader(liveagent_url)
+        mariadb = os.environ.get("MARIADB_CONFIG_URL")
+        if mariadb:
+            loader = MariaDBHandlersLoader(mariadb)
+        if not loader:
+            raise Exception("No LA_CONFIG_URL or MARIADB_CONFIG_URL env variable configured")
+        return await loader.load()
 
-    async def load_configuration(self):
+    async def load_configuration(self) -> ConfigurationParams:
         kafka_server = os.getenv("KAFKA_SERVER")
         if not kafka_server:
             raise Exception("KAFKA_SERVER env variable is mandatory")
@@ -54,10 +71,24 @@ class Configuration:
         return ConfigurationParams(kafka_server=kafka_server, la_key=la_key, la_url=la_url, la_key_id=la_key_id,
                                    timeout=int(os.getenv("TIMEOUT", 300)))
 
-    async def _load_handlers_from_liveagent(self, url):
-        configuration = ClientConfiguration(host=url)
+
+class LiveAgentHandlersLoader:
+
+    def __init__(self, url: str) -> None:
+        super().__init__()
+        self.url = url
+
+    async def load(self) -> list[HandlerParams]:
+        configuration = ClientConfiguration(host=self.url)
         async with ApiClient(configuration) as client:
             api = EventsApi(client)
             consumers = await api.get_event_consumers()
-        return [HandlerParams(id=consumer.id, topics=set([event.topic for event in consumer.events])) for consumer in
-                consumers]
+            handlers = []
+            for consumer in consumers:
+                topics = set()
+                types = set()
+                for event in consumer.events:
+                    topics.add(event.topic)
+                    types.add(event.id)
+                handlers.append(HandlerParams(id=consumer.id, topics=topics, types=types))
+            return handlers

@@ -10,7 +10,8 @@ from configuration import HandlerParams, ConfigurationParams
 
 class MessageProcessor:
 
-    def __init__(self, config: ConfigurationParams):
+    def __init__(self, handler: HandlerParams, config: ConfigurationParams):
+        self.handler = handler
         self.la_key_id = config.la_key_id
         self.la_url = config.la_url
         self.la_key = config.la_key
@@ -26,9 +27,16 @@ class MessageProcessor:
         try:
             account = data["account"]
             if not account:
-                raise ValueError("Url is empty")
-        except (KeyError, ValueError):
-            logging.error("Message %s has no account", msg)
+                raise Exception("Url is empty")
+            type = data["type"]
+            if not type:
+                raise Exception("Type is empty")
+        except (KeyError, Exception) as error:
+            logging.error("Message %s is malformed: %s", msg, error)
+            return True
+
+        if type not in self.handler.types:
+            logging.info("Message %s is not for this handler", msg)
             return True
 
         return await self._send(account, handler_params.id, decoded)

@@ -82,7 +82,7 @@ class Runner:
 
         for handler in handlers:
             logging.info("Starting consumer for handler %s, topics: %s", handler.id, ",".join(handler.topics))
-            runner = Consumer(handler, configuration_params, MessageProcessor(configuration_params),
+            runner = Consumer(handler, configuration_params, MessageProcessor(handler, configuration_params),
                               BackOffHandler(configuration_params.timeout, 5))
             self.runners.add(runner)
             tasks.add(runner.run())
