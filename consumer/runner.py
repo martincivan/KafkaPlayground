@@ -20,18 +20,18 @@ class BackOffHandler:
         self.retries = min(self.retries + 1, self.max_backoff)
         await asyncio.sleep(self.retries * self.retry_timeout)
 
-    def reset(self):
+    async def reset(self):
         self.retries = 0
 
 
 class Consumer:
 
     def __init__(self, handler_params: HandlerParams, configuration: ConfigurationParams,
-                 message_processor: MessageProcessor, backoff_handler: BackOffHandler = None):
+                 message_processor: MessageProcessor, kafka_provider: Callable[[set[str], str, str], AIOKafkaConsumer],
+                 backoff_handler: BackOffHandler = None):
         self.backoff_handler = backoff_handler or BackOffHandler(0)
         self.message_processor = message_processor
-        self.kafka_consumer = AIOKafkaConsumer(*handler_params.topics, bootstrap_servers=configuration.kafka_server,
-                                               group_id=handler_params.id)
+        self.kafka_consumer = kafka_provider(handler_params.topics, configuration.kafka_server, handler_params.id)
         self.handler_params = handler_params
         self._stopped = False
 
@@ -41,7 +41,7 @@ class Consumer:
             while not self._stopped:
                 msg = await self.kafka_consumer.getone()
                 if await self._handle(msg):
-                    self.backoff_handler.reset()
+                    await self.backoff_handler.reset()
                 else:
                     logging.error("Error while processing message %s", msg)
                     self.kafka_consumer.seek(TopicPartition(msg.topic, msg.partition), msg.offset)
@@ -73,7 +73,7 @@ class Runner:
         [HandlerParams, ConfigurationParams], Consumer]):
         self.consumer_factory = consumer_factory
         self.configuration = configuration
-        self.runners = set()
+        self.consumers = set()
 
     async def run(self):
         logging.info("Loading configuration")
@@ -85,11 +85,13 @@ class Runner:
         for handler in handlers:
             logging.info("Starting consumer for handler %s, topics: %s", handler.id, ",".join(handler.topics))
             runner = self.consumer_factory(handler, configuration_params)
-            self.runners.add(runner)
+            self.consumers.add(runner)
             tasks.add(runner.run())
         await asyncio.gather(*tasks)
+        for runner in self.consumers:
+            await runner.stop()
 
     async def stop(self, *_):
         logging.info("Stopping consumers")
-        await asyncio.gather(*[runner.stop() for runner in self.runners])
+        await asyncio.gather(*[runner.stop() for runner in self.consumers])
         logging.info("Consumers stopped")
