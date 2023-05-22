@@ -1,11 +1,12 @@
 import asyncio
 import logging
+from typing import Callable
 
 from aiokafka import AIOKafkaConsumer, ConsumerStoppedError
 from kafka import TopicPartition
 
-from configuration import Configuration, HandlerParams, ConfigurationParams
-from processor import MessageProcessor
+from consumer.configuration import Configuration, HandlerParams, ConfigurationParams
+from consumer.processor import MessageProcessor
 
 
 class BackOffHandler:
@@ -45,9 +46,8 @@ class Consumer:
                     logging.error("Error while processing message %s", msg)
                     self.kafka_consumer.seek(TopicPartition(msg.topic, msg.partition), msg.offset)
                     await self.backoff_handler.handle()
-        except ConsumerStoppedError as error:
-            if not self._stopped:
-                raise error
+        except ConsumerStoppedError:
+            pass
         finally:
             if not self._stopped:
                 try:
@@ -69,7 +69,9 @@ class Consumer:
 
 class Runner:
 
-    def __init__(self, configuration: Configuration):
+    def __init__(self, configuration: Configuration, consumer_factory: Callable[
+        [HandlerParams, ConfigurationParams], Consumer]):
+        self.consumer_factory = consumer_factory
         self.configuration = configuration
         self.runners = set()
 
@@ -82,8 +84,7 @@ class Runner:
 
         for handler in handlers:
             logging.info("Starting consumer for handler %s, topics: %s", handler.id, ",".join(handler.topics))
-            runner = Consumer(handler, configuration_params, MessageProcessor(handler, configuration_params),
-                              BackOffHandler(configuration_params.timeout, 5))
+            runner = self.consumer_factory(handler, configuration_params)
             self.runners.add(runner)
             tasks.add(runner.run())
         await asyncio.gather(*tasks)

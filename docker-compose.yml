@@ -19,7 +19,7 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
-      - ./consumer:/app
+      - ./:/app
       - ./dev.kafka.key:/app/kafka.key
 networks:
   front_qu:

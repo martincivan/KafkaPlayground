@@ -5,7 +5,7 @@ import time
 import jwt
 from qu.la_internal import Configuration, ApiClient, EventsApi, HandlerPayload
 
-from configuration import HandlerParams, ConfigurationParams
+from consumer.configuration import HandlerParams, ConfigurationParams
 
 
 class MessageProcessor:
