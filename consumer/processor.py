@@ -1,23 +1,25 @@
 import json
 import logging
-import time
 
-import jwt
-from qu.la_internal import Configuration, ApiClient, EventsApi, HandlerPayload
-
+from consumer.auth import JWTGenerator
 from consumer.configuration import HandlerParams, ConfigurationParams
+from consumer.sender import Sender
 
 
 class MessageProcessor:
 
-    def __init__(self, handler: HandlerParams, config: ConfigurationParams):
+    def __init__(self, handler: HandlerParams, config: ConfigurationParams,
+                 token_generator: JWTGenerator,
+                 sender: Sender):
+        self.sender = sender
+        self.token_generator = token_generator
         self.handler = handler
         self.la_key_id = config.la_key_id
         self.la_url = config.la_url
         self.la_key = config.la_key
         self.timeout = config.timeout
 
-    async def handle(self, msg, handler_params: HandlerParams):
+    async def handle(self, msg, handler_params: HandlerParams) -> bool:
         logging.info("Processing message %s", msg)
         if not msg.value:
             logging.error("Message %s has no value", msg)
@@ -41,27 +43,7 @@ class MessageProcessor:
 
         return await self._send(account, handler_params.id, decoded)
 
-    async def _send(self, account, id, value):
+    async def _send(self, account: str, id: str, value: str) -> bool:
         url = self.la_url.replace("{account}", account)
-        config = Configuration(host=url)
-        config.access_token = self._generate_jwt(account)
-        async with ApiClient(config) as api_client:
-            api_instance = EventsApi(api_client)
-            payload = HandlerPayload()
-            payload.payload = value
-            payload.id = id
-            result = await api_instance.execute_handler_with_http_info(handler_payload=payload,
-                                                                       _request_timeout=self.timeout)
-            status = result.status_code
-            r = 200 <= status < 300
-            return r
-
-    def _generate_jwt(self, account):
-        iat = int(time.time())
-        token = jwt.encode({
-            'iss': 'kafka-consumer.la',
-            'aud': account + '.kafka.la',
-            'exp': iat + 60,
-            'iat': iat
-        }, self.la_key, algorithm="RS256", headers={'kid': self.la_key_id})
-        return token
+        return await self.sender.send(url=url, token=self.token_generator.generate(account_id=account), data=value,
+                                      id=id)

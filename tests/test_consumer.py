@@ -1,6 +1,6 @@
 import asyncio
 import dataclasses
-from unittest.async_case import IsolatedAsyncioTestCase
+from unittest import IsolatedAsyncioTestCase
 from unittest.mock import AsyncMock
 
 from aiokafka import ConsumerStoppedError, AIOKafkaConsumer
@@ -9,6 +9,8 @@ from kafka import TopicPartition
 from consumer.configuration import HandlerParams, ConfigurationParams, Configuration
 from consumer.processor import MessageProcessor
 from consumer.runner import Consumer, Runner, BackOffHandler
+from consumer.sender import Sender
+from tests.test_processor import TokenGenerator
 
 
 def async_return(result):
@@ -49,7 +51,9 @@ class ConsumerTest(IsolatedAsyncioTestCase):
         handler = HandlerParams("test_id", {"test-topic"}, {"test-type"})
         configuration.load_handlers = AsyncMock(return_value=[handler])
         consumer = AsyncMock(
-            Consumer(handler_params=handler, configuration=config, message_processor=MessageProcessor(handler, config),
+            Consumer(handler_params=handler, configuration=config,
+                     message_processor=MessageProcessor(handler, config, token_generator=TokenGenerator(),
+                                                        sender=Sender(30)),
                      kafka_provider=lambda topics, server, id: KafkaMock()))
         consumer.run = AsyncMock()
         consumer.stop = AsyncMock()
@@ -65,7 +69,8 @@ class ConsumerTest(IsolatedAsyncioTestCase):
     async def create_consumer(self, handle):
         handler_params = HandlerParams("test_id", {"test-topic"}, {"test-type"})
         configuration = ConfigurationParams("kafka-server", "la-key-id", "la-url", "la-key", 10)
-        processor = AsyncMock(MessageProcessor(handler_params, configuration))
+        processor = AsyncMock(
+            MessageProcessor(handler_params, configuration, token_generator=TokenGenerator(), sender=Sender(30)))
         processor.handle = AsyncMock(return_value=handle)
         message_mock = MessageMock("test", 0, 0, "test")
         backoff_handler = AsyncMock(BackOffHandler(0))
