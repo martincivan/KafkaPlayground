@@ -1,5 +1,7 @@
+import json
 import os
 from dataclasses import dataclass
+from typing import Iterable, Optional
 
 from qu.la_internal import ApiClient, EventsApi
 from qu.la_internal import Configuration as ClientConfiguration
@@ -29,12 +31,27 @@ class ConfigurationParams:
             raise Exception("LiveAgent key ID cannot be empty")
 
 
-class MariaDBHandlersLoader:
-    def __init__(self, mariadb: str):
-        self.mariadb = mariadb
+class PathHandlersLoader:
+    def __init__(self, path: str):
+        self.path = path
 
-    async def load(self):
-        pass
+    async def load(self) -> Optional[list[HandlerParams]]:
+        configs = self._get_configs()
+        if configs is None:
+            return None
+        result = []
+        for config in configs:
+            with open(config, "r") as f:
+                data = json.loads(f.read())
+
+    def _get_configs(self) -> Iterable[str]:
+        if os.path.isfile(self.path):
+            return [self.path]
+        if not os.path.isdir(self.path):
+            return []
+        for filename in os.scandir(self.path):
+            if filename.is_file():
+                yield filename.path
 
 
 class Configuration:
@@ -44,9 +61,9 @@ class Configuration:
         liveagent_url = os.environ.get("LA_CONFIG_URL")
         if liveagent_url:
             loader = LiveAgentHandlersLoader(liveagent_url)
-        mariadb = os.environ.get("MARIADB_CONFIG_URL")
-        if mariadb:
-            loader = MariaDBHandlersLoader(mariadb)
+        config_path = os.environ.get("LA_CONFIG_PATH")
+        if config_path:
+            loader = PathHandlersLoader(config_path)
         if not loader:
             raise Exception("No LA_CONFIG_URL or MARIADB_CONFIG_URL env variable configured")
         return await loader.load()

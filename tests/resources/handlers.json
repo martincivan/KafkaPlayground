@@ -1,0 +1,29 @@
+[
+  {
+    "id": "filevirus-scanner",
+    "events": [
+      {
+        "id": "File\\Domain\\Model\\Event\\FileUploaded",
+        "topic": "file"
+      }
+    ]
+  },
+  {
+    "id": "work-report-legacywork-report-legacy",
+    "events": [
+      {
+        "id": "WorkReport\\Legacy\\Application\\UserSlotReportCommand",
+        "topic": "user-slot-report"
+      }
+    ]
+  },
+  {
+    "id": "ticket-searchcommand_handler",
+    "events": [
+      {
+        "id": "TicketSearch\\Application\\IndexTicketsCommand",
+        "topic": "CommandTopic"
+      }
+    ]
+  }
+]
