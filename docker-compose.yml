@@ -2,7 +2,6 @@ version: '3.8'
 services:
   consumer:
     build:
-      dockerfile: consumer.dockerfile
       target: builder
     environment:
       KAFKA_SERVER: "kafka:9092"
