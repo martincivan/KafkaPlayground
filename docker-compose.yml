@@ -20,7 +20,6 @@ services:
       - "host.docker.internal:host-gateway"
     volumes:
       - ./:/app
-      - ./dev.kafka.key:/app/kafka.key
 networks:
   front_qu:
     external: true
