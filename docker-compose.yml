@@ -2,6 +2,7 @@ version: '3.8'
 services:
   consumer:
     build:
+      context: .
       target: builder
     environment:
       KAFKA_SERVER: "kafka:9092"
