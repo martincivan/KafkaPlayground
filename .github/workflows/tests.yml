@@ -7,4 +7,4 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v3
-      - run: docker-compose run --build -T -w /app consumer python -m unittest tests/*.py
+      - run: docker-compose run --build -w /app consumer python -m unittest tests/*.py
