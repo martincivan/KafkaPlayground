@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/KafkaPlayground.iml" filepath="$PROJECT_DIR$/KafkaPlayground.iml" />
+      <module fileurl="file://$PROJECT_DIR$/LiveAgent-Kafka-Consumer.iml" filepath="$PROJECT_DIR$/LiveAgent-Kafka-Consumer.iml" />
     </modules>
   </component>
 </project>
