@@ -1,0 +1,37 @@
+[
+  {
+    "id": "filevirus-scanner",
+    "events": [
+      {
+        "id": "File\\Domain\\Model\\Event\\FileUploaded",
+        "topic": "file"
+      }
+    ]
+  },
+  {
+    "id": "work-report-legacywork-report-legacy",
+    "events": [
+      {
+        "id": "some_different_event",
+        "topic": "user-slot-report"
+      },
+      {
+        "id": "WorkReport\\Legacy\\Application\\UserSlotReportCommand",
+        "topic": "some_different_topic"
+      },
+      {
+        "id": "both_different",
+        "topic": "both_different"
+      }
+    ]
+  },
+  {
+    "id": "whole_new",
+    "events": [
+      {
+        "id": "whole_new",
+        "topic": "whole_new"
+      }
+    ]
+  }
+]

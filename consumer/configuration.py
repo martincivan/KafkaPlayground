@@ -1,9 +1,8 @@
-import json
 import os
 from dataclasses import dataclass
 from typing import Iterable, Optional
 
-from qu.la_internal import ApiClient, EventsApi
+from qu.la_internal import ApiClient, EventsApi, Consumer
 from qu.la_internal import Configuration as ClientConfiguration
 
 
@@ -39,19 +38,35 @@ class PathHandlersLoader:
         configs = self._get_configs()
         if configs is None:
             return None
-        result = []
+        result = {}
+        serializer = ApiClient()
         for config in configs:
             with open(config, "r") as f:
-                data = json.loads(f.read())
+                Object = lambda **kwargs: type("Object", (), kwargs)
+                data: list[Consumer] = serializer.deserialize(Object(data=f.read()), "List[Consumer]")
+                for consumer in data:
+                    topics = {event.topic for event in consumer.events}
+                    types = {event.id for event in consumer.events}
+                    if consumer.id in result:
+                        result[consumer.id].topics.update(topics)
+                        result[consumer.id].types.update(types)
+                    else:
+                        result[consumer.id] = HandlerParams(consumer.id, topics, types)
+        await serializer.close()
+        return list(result.values())
 
-    def _get_configs(self) -> Iterable[str]:
+    def _get_configs(self) -> Optional[Iterable[str]]:
+        if not os.path.exists(self.path):
+            return None
         if os.path.isfile(self.path):
             return [self.path]
         if not os.path.isdir(self.path):
             return []
+        result = []
         for filename in os.scandir(self.path):
             if filename.is_file():
-                yield filename.path
+                result.append(filename.path)
+        return result
 
 
 class Configuration:
